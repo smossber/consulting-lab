@@ -1,0 +1,56 @@
+---
+# Will create a Template out of a ISO and a kickstart file.
+
+- name: Set up template network
+  import_role:
+    name: libvirt_network
+  vars:
+    libvirt_networks:
+    - name: template
+      type: open_network
+      address: 172.199.199.0
+      interface_address: 172.199.199.1
+      netmask: 255.255.255.0
+      prefix: 24
+      dhcp_range_start: 172.199.199.50
+      dhcp_range_stop: 172.199.199.60
+
+- name: iptables temlate network
+  import_role:
+    name: iptables
+  vars:
+    libvirt_networks:
+    - name: template
+      type: open_network
+      address: 172.199.199.0
+      interface_address: 172.199.199.1
+      netmask: 255.255.255.0
+      prefix: 24
+      dhcp_range_start: 172.199.199.50
+      dhcp_range_stop: 172.199.199.60
+
+
+- name: download kickstart repo
+  import_role:
+    name: reposync
+
+- name: create template storage
+  file:
+    path: /var/lib/libvirt/images/templates/
+    state: directory
+
+
+- name: create qcow2 image
+  command: qemu-img create -f qcow2 /var/lib/libvirt/images/templates/template-{{ template_name }}.qcow2 20G
+  vars:
+    template_name: rhel7.6
+
+- name: create kickstart
+  template:
+    src: rhel.ks
+    dest: /tmp/rhel.ks
+
+- name: run virt-install
+  command: virt-install --name template-{{ template_name }} --vcpu 2 --memory 2048 --disk /var/lib/libvirt/images/templates/template-{{ template_name }}.qcow2 --graphics spice,listen=127.0.0.1 --noautoconsole  --initrd-inject=/tmp/rhel.ks --extra-args "inst.ks=file:/rhel.ks" --network=template --cdrom /var/lib/libvirt/images/rhel-server-7.6-x86_64.iso
+  vars:
+    template_name: rhel7.6

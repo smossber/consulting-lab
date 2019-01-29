@@ -1,0 +1,4 @@
+- hosts: labhost
+  become: true
+  roles:
+  - vm-template
